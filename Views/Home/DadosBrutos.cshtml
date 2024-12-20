@@ -1,0 +1,30 @@
+﻿@{
+    ViewData["Title"] = "Dados Brutos";
+}
+<h1>@ViewData["Title"]</h1>
+
+@{
+    ViewBag.Title = "MQTT Data";
+}
+
+<h2>Mensagens do MQTT</h2>
+
+<ul id="messagesList">
+</ul>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+<script>
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/mqttHub")
+        .build();
+
+    connection.on("ReceiveMessage", function (message) {
+        const li = document.createElement("li");
+        li.textContent = message;
+        document.getElementById("messagesList").appendChild(li);
+    });
+
+    connection.start().catch(function (err) {
+        return console.error(err.toString());
+    });
+</script>

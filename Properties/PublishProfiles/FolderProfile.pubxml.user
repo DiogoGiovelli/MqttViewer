@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+https://go.microsoft.com/fwlink/?LinkID=208121.
+-->
+<Project>
+  <PropertyGroup>
+    <_PublishTargetUrl>C:\Projetos\MqttViewer\bin\Release\net9.0\publish\</_PublishTargetUrl>
+    <History>True|2024-12-19T20:32:10.2296680Z||;False|2024-12-19T17:31:45.9248289-03:00||;False|2024-12-19T17:31:21.4764176-03:00||;True|2024-12-19T17:07:13.6014222-03:00||;</History>
+    <LastFailureDetails />
+  </PropertyGroup>
+</Project>

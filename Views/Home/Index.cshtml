@@ -1,0 +1,313 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+
+
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real-Time Sensor Data</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    /* Estilo para os botões */
+    .mqtt-button {
+        padding: 10px 20px;
+        font-size: 16px;
+        margin: 5px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        color: white;
+    }
+
+        .mqtt-button.ligar {
+            background-color: green;
+        }
+
+        .mqtt-button.desligar {
+            background-color: red;
+        }
+
+    .button-container {
+        margin: 20px;
+    }
+</style>
+
+<h2>Gráficos de Dados dos Sensores</h2>
+<div class="row">
+    <div class="col-sm-6">
+        <canvas id="acelerometroChart"></canvas>
+    </div>
+    <div  class="col-sm-6">
+        <canvas id="gyroscopioChart"></canvas>
+    </div>
+</div>
+
+<div class="row">
+    <div  class="col-sm-6">
+        <canvas id="motorChart"></canvas>
+    </div>
+    <div  class="col-sm-6">
+        <canvas id="vibracaoChart"></canvas>
+    </div>
+</div>
+
+<!-- Botões para enviar mensagens ao broker MQTT -->
+<div class="button-container">
+    <input type="button" class="mqtt-button ligar" value="Ligar" onclick="enviarMensagem('ligar')"></input>
+    <input type="button" class="mqtt-button desligar" value="Desligar" onclick="enviarMensagem('desligar')"></input>
+    <input type="button" class="mqtt-button btn btn-primary" value="Gerador de dados teste" onclick="gerarDadosFake()"></input>
+</div>
+
+<div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 400px; margin: auto;">
+    <h2 style="text-align: center; color: #333;">Configurações de MQTT</h2>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <tr>
+            <td style="font-weight: bold; color: #555;">Host:</td>
+            <td style="color: #333;">mqtt://mqtt.dataext.com.br</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold; color: #555;">Porta:</td>
+            <td style="color: #333;">1883</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold; color: #555;">Tópico:</td>
+            <td style="color: #333;">test/ifsc</td>
+        </tr>
+    </table>
+</div>
+
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+
+        // Inicialização dos gráficos com Chart.js
+        const acelerometroCtx = document.getElementById('acelerometroChart').getContext('2d');
+        const gyroscopioCtx = document.getElementById('gyroscopioChart').getContext('2d');
+        const motorCtx = document.getElementById('motorChart').getContext('2d');
+        const vibracaoCtx = document.getElementById('vibracaoChart').getContext('2d');
+
+        const acelerometroChart = new Chart(acelerometroCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Aceleração X', data: [], borderColor: 'red', fill: false },
+                    { label: 'Aceleração Y', data: [], borderColor: 'green', fill: false },
+                    { label: 'Aceleração Z', data: [], borderColor: 'blue', fill: false }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        const gyroscopioChart = new Chart(gyroscopioCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Giro X', data: [], borderColor: 'orange', fill: false },
+                    { label: 'Giro Y', data: [], borderColor: 'purple', fill: false },
+                    { label: 'Giro Z', data: [], borderColor: 'brown', fill: false }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        const motorChart = new Chart(motorCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Velocidade do Motor', data: [], borderColor: 'cyan', fill: false }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+       const vibracaoChart = new Chart(vibracaoCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Vibração do Sistema', data: [], borderColor: 'blue', fill: false }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Configuração do SignalR
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/mqttHub")
+            .build();
+
+        connection.on("ReceiveMessage", function (message) {
+            try {
+                const data = JSON.parse(message);
+
+                // Atualização do gráfico de acelerômetro
+                if (data.acelerometro_gyroscopio) {
+                    const acel = data.acelerometro_gyroscopio;
+                    const timestamp = new Date().toLocaleTimeString();
+
+                    acelerometroChart.data.labels.push(timestamp);
+                    acelerometroChart.data.datasets[0].data.push(acel.aceleracao_x);
+                    acelerometroChart.data.datasets[1].data.push(acel.aceleracao_y);
+                    acelerometroChart.data.datasets[2].data.push(acel.aceleracao_z);
+
+                    if (acelerometroChart.data.labels.length > 20) {
+                        acelerometroChart.data.labels.shift();
+                        acelerometroChart.data.datasets.forEach(dataset => dataset.data.shift());
+                    }
+
+                    acelerometroChart.update();
+                }
+
+                // Atualização do gráfico de gyroscópio
+                if (data.acelerometro_gyroscopio) {
+                    const giro = data.acelerometro_gyroscopio;
+                    const timestamp = new Date().toLocaleTimeString();
+
+                    gyroscopioChart.data.labels.push(timestamp);
+                    gyroscopioChart.data.datasets[0].data.push(giro.giro_x);
+                    gyroscopioChart.data.datasets[1].data.push(giro.giro_y);
+                    gyroscopioChart.data.datasets[2].data.push(giro.giro_z);
+
+                    if (gyroscopioChart.data.labels.length > 20) {
+                        gyroscopioChart.data.labels.shift();
+                        gyroscopioChart.data.datasets.forEach(dataset => dataset.data.shift());
+                    }
+
+                    gyroscopioChart.update();
+                }
+
+                // Atualização do gráfico do motor
+                if (data.motor_shield_l293d) {
+                    const motor = data.motor_shield_l293d;
+                    const timestamp = new Date().toLocaleTimeString();
+
+                    motorChart.data.labels.push(timestamp);
+                    motorChart.data.datasets[0].data.push(motor.velocidade);
+
+                    if (motorChart.data.labels.length > 20) {
+                        motorChart.data.labels.shift();
+                        motorChart.data.datasets.forEach(dataset => dataset.data.shift());
+                    }
+
+                    motorChart.update();
+                }
+
+              if (data.sensor_vibracao_sw420) {
+                    const vibracao = data.sensor_vibracao_sw420;
+                    const timestamp = new Date().toLocaleTimeString();
+
+                    vibracaoChart.data.labels.push(timestamp);
+                    vibracaoChart.data.datasets[0].data.push(vibracao.valor);
+
+                    if (vibracaoChart.data.labels.length > 20) {
+                        vibracaoChart.data.labels.shift();
+                        vibracaoChart.data.datasets.forEach(dataset => dataset.data.shift());
+                    }
+
+                    vibracaoChart.update();
+                }
+            } catch (err) {
+                console.error("Erro ao processar mensagem:", err);
+            }
+        });
+
+        connection.start().catch(function (err) {
+            console.error(err.toString());
+        });
+
+        function gerarVariacoesJSON() {
+                const jsonOriginal = {
+                    "sensor_magnetico_efeito_hall": {
+                        "ligado": false,
+                        "valor": 0.2
+                    },
+                    "acelerometro_gyroscopio": {
+                        "aceleracao_x": 0.12,
+                        "aceleracao_y": -0.05,
+                        "aceleracao_z": 9.81,
+                        "giro_x": 0.02,
+                        "giro_y": -0.01,
+                        "giro_z": 0.05
+                    },
+                    "sensor_vibracao_sw420": {
+                        "ligado": false,
+                        "valor": 0.2
+                    },
+                    "motor_shield_l293d": {
+                        "ligado": true,
+                        "velocidade": 50
+                    }
+                };
+
+                const fatorVariacao = 0.1; // Fator de variação dos valores
+
+                const variarValorNumerico = (valor) => {
+                    const variacao = (Math.random() * 2 - 1) * fatorVariacao * valor;
+                    return parseFloat((valor + variacao).toFixed(2));
+                };
+
+                const alternarBooleano = (valor) => {
+                    return Math.random() < 0.1 ? !valor : valor; // 10% de chance de alternar
+                };
+
+                const jsonComVariacoes = {
+                    sensor_magnetico_efeito_hall: {
+                        ligado: alternarBooleano(jsonOriginal.sensor_magnetico_efeito_hall.ligado),
+                        valor: variarValorNumerico(jsonOriginal.sensor_magnetico_efeito_hall.valor)
+                    },
+                    acelerometro_gyroscopio: {
+                        aceleracao_x: variarValorNumerico(jsonOriginal.acelerometro_gyroscopio.aceleracao_x),
+                        aceleracao_y: variarValorNumerico(jsonOriginal.acelerometro_gyroscopio.aceleracao_y),
+                        aceleracao_z: variarValorNumerico(jsonOriginal.acelerometro_gyroscopio.aceleracao_z),
+                        giro_x: variarValorNumerico(jsonOriginal.acelerometro_gyroscopio.giro_x),
+                        giro_y: variarValorNumerico(jsonOriginal.acelerometro_gyroscopio.giro_y),
+                        giro_z: variarValorNumerico(jsonOriginal.acelerometro_gyroscopio.giro_z)
+                    },
+                    sensor_vibracao_sw420: {
+                        ligado: alternarBooleano(jsonOriginal.sensor_vibracao_sw420.ligado),
+                        valor: variarValorNumerico(jsonOriginal.sensor_vibracao_sw420.valor)
+                    },
+                    motor_shield_l293d: {
+                        ligado: alternarBooleano(jsonOriginal.motor_shield_l293d.ligado),
+                        velocidade: variarValorNumerico(jsonOriginal.motor_shield_l293d.velocidade)
+                    }
+                };
+
+                return JSON.stringify(jsonComVariacoes, null, 2);
+        }
+
+
+        function gerarDadosFake(){
+            let message = gerarVariacoesJSON();
+            enviarMensagem(message)
+        }
+
+function enviarMensagem(message) {
+    // Configura os dados para enviar
+    var data = new FormData();
+    data.append("message", message);
+
+    // Envia a mensagem de forma assíncrona
+    fetch("/Home/EnviarMqtt", {
+        method: "POST",
+        body: data,
+    })
+    .then(response => {
+        if (response.ok) {
+            console.log("Mensagem enviada com sucesso!");
+        } else {
+            console.error("Erro ao enviar a mensagem.");
+        }
+    })
+    .catch(error => {
+        console.error("Erro de conexão:", error);
+    });
+}
+
+</script>
