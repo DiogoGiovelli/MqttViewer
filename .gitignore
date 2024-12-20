@@ -3,7 +3,8 @@
 ################################################################################
 
 /bin
-/.vs/MqttViewer
 /.config
 /obj
 /MqttViewer.csproj.user
+/.idea/
+/.vs/
